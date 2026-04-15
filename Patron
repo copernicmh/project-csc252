@@ -1,0 +1,12 @@
+package project-csc252.model;
+
+import java.util.Deque;
+import java.util.ArrayDeque;
+
+public class Patron {
+    public String id, name, email;
+    public Deque<String> history = new ArrayDeque<>();
+
+    //Constructor
+    //addHistory, getHistory
+}

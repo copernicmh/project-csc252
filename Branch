@@ -1,0 +1,8 @@
+package project-csc252.model;
+
+
+public class Branch {
+    public String id, name;
+
+    //constructor
+}
