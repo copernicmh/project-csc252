@@ -1,9 +1,0 @@
-package project-csc252.model;
-
-Public class Book {
-    Public String isbn, title, year;
-    Public String[] authors, tags;
-
-    //Constructor
-    //toString
-}
