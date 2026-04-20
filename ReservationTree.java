@@ -1,4 +1,12 @@
+
+// Reservation Scheduling - AVL Reservation Tree
+
+import java.util.ArrayList;
+import java.util.List;
+
 public class ReservationTree {
+
+   
     private class Node {
         Reservation reservation;
         Node left, right;
@@ -10,50 +18,272 @@ public class ReservationTree {
         }
     }
 
+  
     private Node root;
+    private RoomManager roomManager; // Integration point with teammate's Room Management
 
-    //ƒ The logic to Prevent Conflicts [cite: 183, 190]
-    private boolean hasOverlap(Node node, int newStart, int newEnd) {
-        if (node == null) return false;
-
-        // Condition for interval overlap: 
-        // (StartA < EndB) AND (EndA > StartB)
-        if (node.reservation.getStart() < newEnd && node.reservation.getEnd() > newStart) {
-            return true;
-        }
-
-        // Search based on start time
-        if (newStart < node.reservation.getStart()) {
-            return hasOverlap(node.left, newStart, newEnd);
-        } else {
-            return hasOverlap(node.right, newStart, newEnd);
-        }
+  
+    public ReservationTree(RoomManager roomManager) {
+        this.roomManager = roomManager;
     }
 
+ 
+
+    /**
+     * Make a reservation.
+     * Validates the room exists (via RoomManager), checks for conflicts,
+     * then inserts into the AVL tree.
+     */
     public boolean addReservation(Reservation res) {
-        // First check for conflicts 
-        if (hasOverlap(root, res.getStart(), res.getEnd())) {
-            System.out.println("Conflict detected! Cannot schedule.");
+        // 1. Verify the room exists in the Room Management system
+        if (!roomManager.rooms.containsKey(res.getRoomID())) {
+            System.out.println("Room " + res.getRoomID() + " does not exist. Reservation failed.");
             return false;
         }
 
+        // 2. Check for time conflicts on this specific room
+        if (hasOverlap(root, res.getRoomID(), res.getStart(), res.getEnd())) {
+            System.out.println("Conflict detected for Room " + res.getRoomID() +
+                               "! Reservation " + res.getID() + " cannot be scheduled.");
+            return false;
+        }
+
+        // 3. Insert and balance
         root = insert(root, res);
+        System.out.println("Reservation Confirmed: " + res);
         return true;
     }
 
+    /**
+     * Cancel a reservation by ID.
+     */
+    public boolean cancelReservation(String reservationID) {
+        if (!exists(root, reservationID)) {
+            System.out.println("Reservation " + reservationID + " not found.");
+            return false;
+        }
+        root = delete(root, reservationID);
+        System.out.println("Reservation " + reservationID + " successfully cancelled.");
+        return true;
+    }
+
+    /**
+     * Returns all reservations for a specific room in chronological order.
+     * Useful for displaying a room's schedule.
+     */
+    public List<Reservation> getReservationsForRoom(String roomID) {
+        List<Reservation> result = new ArrayList<>();
+        inOrderByRoom(root, roomID, result);
+        return result;
+    }
+
+    /**
+     * Returns ALL reservations across all rooms in chronological order.
+     */
+    public List<Reservation> getAllReservations() {
+        List<Reservation> result = new ArrayList<>();
+        inOrder(root, result);
+        return result;
+    }
+
+    /**
+     * Finds the earliest available start time for a given room
+     * after a given time — useful for the Priority Queue / "next available" logic.
+     */
+    public int nextAvailableTime(String roomID, int afterTime, int durationMinutes) {
+        List<Reservation> roomRes = getReservationsForRoom(roomID);
+        int candidateStart = afterTime;
+
+        for (Reservation r : roomRes) {
+            // If our candidate window overlaps this reservation, push past it
+            if (candidateStart < r.getEnd() && candidateStart + durationMinutes > r.getStart()) {
+                candidateStart = r.getEnd();
+            }
+        }
+        return candidateStart;
+    }
+
+    /**
+     * Display all reservations to console.
+     */
+    public void displayAll() {
+        List<Reservation> all = getAllReservations();
+        if (all.isEmpty()) {
+            System.out.println("No reservations scheduled.");
+        } else {
+            System.out.println("--- All Reservations ---");
+            for (Reservation r : all) {
+                System.out.println(r);
+            }
+        }
+    }
+    //  CONFLICT DETECTION
+    //  Interval overlap: (StartA < EndB) AND (EndA > StartB)
+
+    private boolean hasOverlap(Node node, String roomID, int newStart, int newEnd) {
+        if (node == null) return false;
+
+        // Only flag a conflict if it's the same room
+        if (node.reservation.getRoomID().equals(roomID)) {
+            if (node.reservation.getStart() < newEnd &&
+                node.reservation.getEnd()   > newStart) {
+                return true;
+            }
+        }
+
+        // Traverse both subtrees — necessary because tree is ordered by
+        // start time across ALL rooms, so same-room conflicts can appear anywhere
+        return hasOverlap(node.left,  roomID, newStart, newEnd) ||
+               hasOverlap(node.right, roomID, newStart, newEnd);
+    }
+    //avl 
     private Node insert(Node node, Reservation res) {
-        // 1. Standard BST insertion logic based on Start Time
+        // 1. Standard BST insert by start time
         if (node == null) return new Node(res);
-        
+
         if (res.getStart() < node.reservation.getStart()) {
             node.left = insert(node.left, res);
         } else {
             node.right = insert(node.right, res);
         }
 
-        // 2. Update height and perform AVL balancing rotations here
-    
-        
-        return node; 
+        // 2. Update height
+        node.height = 1 + Math.max(height(node.left), height(node.right));
+
+        // 3. AVL rotations
+        return rebalance(node);
+    }
+    private Node delete(Node node, String reservationID) {
+        if (node == null) return null;
+
+        if (node.reservation.getID().equals(reservationID)) {
+            // Node to delete found
+            if (node.left == null)  return node.right;
+            if (node.right == null) return node.left;
+
+            // Two children: replace with in-order successor (smallest in right subtree)
+            Node successor = findMin(node.right);
+            node.reservation = successor.reservation;
+            node.right = delete(node.right, successor.reservation.getID());
+        } else {
+            // Search both subtrees (reservation IDs can be anywhere in the tree)
+            node.left  = delete(node.left,  reservationID);
+            node.right = delete(node.right, reservationID);
+        }
+
+        node.height = 1 + Math.max(height(node.left), height(node.right));
+        return rebalance(node);
+    }
+
+    private Node findMin(Node node) {
+        while (node.left != null) node = node.left;
+        return node;
+    }
+
+    private int height(Node node) {
+        return (node == null) ? 0 : node.height;
+    }
+
+    private int getBalance(Node node) {
+        return (node == null) ? 0 : height(node.left) - height(node.right);
+    }
+
+    private Node rebalance(Node node) {
+        int balance = getBalance(node);
+
+        // Left-Left case
+        if (balance > 1 && getBalance(node.left) >= 0)
+            return rotateRight(node);
+
+        // Left-Right case
+        if (balance > 1 && getBalance(node.left) < 0) {
+            node.left = rotateLeft(node.left);
+            return rotateRight(node);
+        }
+
+        // Right-Right case
+        if (balance < -1 && getBalance(node.right) <= 0)
+            return rotateLeft(node);
+
+        // Right-Left case
+        if (balance < -1 && getBalance(node.right) > 0) {
+            node.right = rotateRight(node.right);
+            return rotateLeft(node);
+        }
+
+        return node; // already balanced
+    }
+
+    private Node rotateRight(Node y) {
+        Node x  = y.left;
+        Node T2 = x.right;
+
+        x.right = y;
+        y.left  = T2;
+
+        y.height = 1 + Math.max(height(y.left), height(y.right));
+        x.height = 1 + Math.max(height(x.left), height(x.right));
+
+        return x;
+    }
+
+    private Node rotateLeft(Node x) {
+        Node y  = x.right;
+        Node T2 = y.left;
+
+        y.left  = x;
+        x.right = T2;
+
+        x.height = 1 + Math.max(height(x.left), height(x.right));
+        y.height = 1 + Math.max(height(y.left), height(y.right));
+
+        return y;
+    }
+    private void inOrder(Node node, List<Reservation> result) {
+        if (node == null) return;
+        inOrder(node.left, result);
+        result.add(node.reservation);
+        inOrder(node.right, result);
+    }
+
+    private void inOrderByRoom(Node node, String roomID, List<Reservation> result) {
+        if (node == null) return;
+        inOrderByRoom(node.left, roomID, result);
+        if (node.reservation.getRoomID().equals(roomID)) {
+            result.add(node.reservation);
+        }
+        inOrderByRoom(node.right, roomID, result);
+    }
+
+    private boolean exists(Node node, String reservationID) {
+        if (node == null) return false;
+        if (node.reservation.getID().equals(reservationID)) return true;
+        return exists(node.left, reservationID) || exists(node.right, reservationID);
+    }
+    public static void main(String[] args) {
+        // Set up teammate's RoomManager with a couple of rooms
+        RoomManager manager = new RoomManager();
+        manager.addRoom("Room101", 10, "Whiteboard, WiFi");
+        manager.addRoom("Room305", 20, "Projector, WiFi");
+
+        ReservationTree tree = new ReservationTree(manager);
+
+        // Make reservations
+        tree.addReservation(new Reservation("RES001", "Room305", 540, 600));  // 9:00 - 10:00
+        tree.addReservation(new Reservation("RES002", "Room305", 660, 720));  // 11:00 - 12:00
+        tree.addReservation(new Reservation("RES003", "Room101", 540, 600));  // 9:00 - 10:00 (different room, OK)
+        tree.addReservation(new Reservation("RES004", "Room305", 570, 630));  // CONFLICT on Room305
+
+        System.out.println();
+        tree.displayAll();
+
+        // Cancel one
+        System.out.println();
+        tree.cancelReservation("RES002");
+
+        // Next available slot
+        int next = tree.nextAvailableTime("Room305", 540, 60);
+        System.out.println("\nNext available 60-min slot in Room305 after 9:00 AM starts at: " +
+                           String.format("%02d:%02d", next / 60, next % 60));
     }
 }
