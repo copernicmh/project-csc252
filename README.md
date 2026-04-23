@@ -28,27 +28,6 @@ ReservationService.java — Reservation make/cancel/conflict detection
 Interval overlap conflict detection logic
 Next-available-time calculation
 
-# Project Structure
-
-studyspace/
-├── app/
-│   └── CliApp.java              — Main CLI entry point
-├── model/
-│   ├── Building.java            — Building entity
-│   ├── Reservation.java         — Reservation entity
-│   ├── Room.java                — Room entity (holds TreeMap of reservations)
-│   └── StudentRequest.java      — Encapsulates a student's search criteria
-├── services/
-│   ├── ReservationService.java  — Conflict detection, make/cancel reservation
-│   ├── RoutingService.java      — Dijkstra's shortest path on campus graph
-│   └── StudySpaceService.java   — Room/building management + nearest-room search
-└── structures/
-    ├── CampusGraph.java         — Weighted undirected graph (adjacency list)
-    ├── Edge.java                — Graph edge (destination + weight)
-    ├── ReservationTree.java     — AVL BST for cross-room reservation storage
-    └── RoomCandidate.java       — (room, distance) pair used in priority queue
-
-
 # Build Instructions
 
 Step 1 — Navigate into the project folder:
