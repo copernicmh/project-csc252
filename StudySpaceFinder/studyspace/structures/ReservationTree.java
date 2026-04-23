@@ -3,9 +3,9 @@ package studyspace.structures;
 // Reservation Scheduling - AVL Reservation Tree
 // Stores reservations sorted by startTime (String HH:MM, lexicographic = chronological)
 
-import studyspace.model.Reservation;
 import java.util.ArrayList;
 import java.util.List;
+import studyspace.model.Reservation;
 
 public class ReservationTree
 {
@@ -26,10 +26,7 @@ public class ReservationTree
 
     public ReservationTree() {}
 
-    /**
-     * Insert a reservation. Returns false and prints a message if a time
-     * conflict exists for the same room.
-     */
+    
     public boolean addReservation(Reservation res)
     {
         if (hasOverlap(root, res.getRoomID(), res.getStartTime(), res.getEndTime()))
@@ -79,11 +76,7 @@ public class ReservationTree
         return result;
     }
 
-    /**
-     * Returns the earliest start time (HH:MM) at which a room is free for
-     * the given duration (in minutes), starting the search from afterTime.
-     * afterTime and the return value are both "HH:MM" strings.
-     */
+  
     public String nextAvailableTime(String roomID, String afterTime, int durationMinutes)
     {
         List<Reservation> roomRes = getReservationsForRoom(roomID);
