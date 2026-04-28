@@ -9,9 +9,11 @@ Users can manage buildings and rooms, make and cancel reservations with automati
 
 # Build and Run Instructions
 
-cd StudySpaceFinder
+to compile — be inside studyspace/
 
-javac studyspace/model/*.java studyspace/structures/*.java studyspace/services/*.java studyspace/app/*.java
+javac model/*.java structures/*.java services/*.java app/*.java
+
+To run — be one level up, outside studyspace/
 
 java studyspace.app.CliApp
 
