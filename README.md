@@ -21,3 +21,6 @@ java studyspace.app.CliApp
 
 */data contains sample csv data*
 *time must be inputted as hh:mm example: 09:30 AM
+
+
+Gemini was utlized for bug fixes
